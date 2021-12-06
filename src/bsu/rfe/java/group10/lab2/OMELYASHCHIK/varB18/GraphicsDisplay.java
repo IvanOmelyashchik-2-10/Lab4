@@ -7,11 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Stroke;
 import java.awt.font.FontRenderContext;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.geom.*;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
@@ -30,20 +26,22 @@ public class GraphicsDisplay extends JPanel {
     // Флаговые переменные, задающие правила отображения графика
     private boolean showAxis = true;
     private boolean showMarkers = true;
+    private boolean showIntgraphical = true;
 
     // Границы диапазона пространства, подлежащего отображению
     private double minX;
     private double maxX;
     private double minY;
     private double maxY;
-    private boolean showIntegrals = false;
 
+    private int selectedMarker = -1;
     // Используемый масштаб отображения
 
     private double scale;
     // Различные стили черчения линий
 
     private BasicStroke graphicsStroke;
+    private BasicStroke graphicalInt;
     private BasicStroke axisStroke;
     private boolean turnGraph = false;
     private BasicStroke markerStroke;
@@ -62,7 +60,9 @@ public class GraphicsDisplay extends JPanel {
 
                 BasicStroke.JOIN_ROUND, 10.0f, new float[] {20,20, 10,10,10,10,10,10,20,20,10,10,20,20}, 0.0f);
 // Перо для рисования осей координат
+        graphicalInt = new BasicStroke(2.0f, BasicStroke.CAP_BUTT,
 
+                BasicStroke.JOIN_ROUND, 10.0f, new float[] {10,20, 20,20,20,20,20,20,10,20,10,10,20,20}, 0.0f);
         axisStroke = new BasicStroke(2.0f, BasicStroke.CAP_BUTT,
 
                 BasicStroke.JOIN_MITER, 10.0f, null, 0.0f);
@@ -97,8 +97,9 @@ public class GraphicsDisplay extends JPanel {
         this.showMarkers = showMarkers;
         repaint();
     }
-    public void setShowIntegrals(boolean showIntegrals) {
-        this.showIntegrals = showIntegrals;
+
+    public void setShowIntgraphical(boolean showIntgraphical) {
+        this.showIntgraphical = showIntgraphical;
         repaint();
     }
     // Метод отображения всего компонента, содержащего график
@@ -185,20 +186,38 @@ minY
 // Шаг 8 - В нужном порядке вызвать методы отображения элементов графика
 // Порядок вызова методов имеет значение, т.к. предыдущий рисунок будет затираться последующим
 // Первыми (если нужно) отрисовываются оси координат.
-        if (turnGraph) {
-            rotatePanel(canvas);
-        }
+
         if (showAxis) paintAxis(canvas);
 // Затем отображается сам график
         paintGraphics(canvas);
 // Затем (если нужно) отображаются маркеры точек, по которым строился график.
-        if (showIntegrals) paintIntegrals(canvas);
-        if (showMarkers) paintMarkers(canvas);
+        if (showMarkers) {
+            paintMarkers(canvas);
+            paintIntMarkers(canvas);
+        }
+        if(showIntgraphical)paintIntGraphics(canvas);
 // Шаг 9 - Восстановить старые настройки холста
         canvas.setFont(oldFont);
         canvas.setPaint(oldPaint);
         canvas.setColor(oldColor);
         canvas.setStroke(oldStroke);
+    }
+    protected void paintIntGraphics(Graphics2D canvas){
+        canvas.setStroke(graphicalInt);
+        canvas.setColor(Color.GREEN);
+        GeneralPath graphics = new GeneralPath();
+        for (int i = 0; i < graphicsData.length; i++){
+            Point2D.Double point = xyToPointInt(graphicsData[i][0].intValue(), graphicsData[i][1].intValue());
+            if (i > 0) {
+// Не первая итерация цикла - вести линию в точку point
+                graphics.lineTo(point.getX(), point.getY());
+            } else {
+// Первая итерация цикла - установить начало пути в точку point
+                graphics.moveTo(point.getX(), point.getY());
+            }
+            canvas.draw(graphics);
+        }
+
     }
 
 
@@ -229,120 +248,9 @@ minY
 // Отобразить график
         canvas.draw(graphics);
     }
-    protected void paintIntegrals(Graphics2D canvas) {
-        LinkedList<Integer> indexses = new LinkedList<>();
-        Double domens = 0.0;
-        GeneralPath path = new GeneralPath();
-        for (int i = 0; i < graphicsData.length - 1; i++) {
-            System.out.println("X: " + graphicsData[i][0] + " Y: " + graphicsData[i][1] + " i: " + i);
-            if ((graphicsData[i][1] < 0 == graphicsData[i + 1][1] >= 0) || (graphicsData[i][1] == 0)) {
-                if (domens != 0) {
-                    domens += 1;
-                    if (graphicsData[i][1] == 0)
-                        indexses.add(i - 1);
-                    else
-                        indexses.add(i);
-                    indexses.add(i);
-                    System.out.println("End+Start");
-                    if(graphicsData[i+1][1]==0) {
-                        i++;
-                    }
-                    System.out.println("X: " + graphicsData[i][0] + " Y: " + graphicsData[i][1] + " i: " + i);
-                    continue;
-                } else {
-                    indexses.add(i);
-                    System.out.println("Start");
-                    domens += 0.5;
-                }
 
-            }
-            if (domens.intValue() == domens) {
-                //  System.out.println("end");
-            } else {
-                //System.out.println("start");
-            }
-        }
-        LinkedList<Double> xcoordinates = new LinkedList<>();
-        for (int i = 0; i < 2 * domens.intValue(); i++) {
-            //формулка для рассчета точки пересейчения прямой с осью координат по известным двум точкам
-            xcoordinates.add(-graphicsData[indexses.get(i)][1] / (graphicsData[indexses.get(i) + 1][1] - graphicsData[indexses.get(i)][1]) * (graphicsData[indexses.get(i) + 1][0] - graphicsData[indexses.get(i)][0]) + graphicsData[indexses.get(i)][0]);
-            System.out.println("Координата x пересечения c Ox с индексом " + i + " " + xcoordinates.get(i) + " на интервале от " + indexses.get(i) + " до " + (indexses.get(i) + 1));
-        }
 
-        int k = 0;
-        Double[] integral = new Double[xcoordinates.size() / 2];
-        for (int i = 0; i < xcoordinates.size() / 2; i++) {
-            integral[i] = 0.0;
-        }
-        Double maxy = 0.0;
-        Double miny = 0.0;
-        Double[] averagey = new Double[xcoordinates.size() / 2];
-        for (int i = 0; i < graphicsData.length; i++) {
-            // System.out.println("INDEX: "+ i+ " left " +xcoordinates.get(k)+"<="+graphicsData[i][0]+"<"+xcoordinates.get(k+1)+ " ? ");
-            if (graphicsData[i][0] >= xcoordinates.get(k) && graphicsData[i][0] < xcoordinates.get(k + 1)) {
-// Преобразовать значения (x,y) в точку на экране point
-                if (maxy < graphicsData[i][1]) {
-                    maxy = graphicsData[i][1];
-                }
-                if (miny > graphicsData[i][1]) {
-                    miny = graphicsData[i][1];
-                }
-                if (graphicsData[i - 1][0] <= xcoordinates.get(k)) {
-// Первая итерация цикла - установить начало пути в точку point
-                    integral[k / 2] += Math.abs((graphicsData[i][0] - xcoordinates.get(k)) * graphicsData[i][1] / 2);
-                    canvas.setColor(Color.red);
-                    Point2D.Double point = xyToPoint(xcoordinates.get(k), 0);
-                    path.moveTo(point.getX(), point.getY());
-                    System.out.println("The line moved to its initial position, x = " + point.getX() + " on the itaration i = " + i);
-                    point = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
-                    path.lineTo(point.getX(), point.getY());
-                }
-                if (graphicsData[i + 1][0] >= xcoordinates.get(k + 1)) {
-// Не первая итерация цикла - вести линию в точку point
-                    Point2D.Double point = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
-                    path.lineTo(point.getX(), point.getY());
-                    point = xyToPoint(xcoordinates.get(k + 1), 0);
-                    path.lineTo(point.getX(), point.getY());
-                    integral[k / 2] += Math.abs(graphicsData[i][1] / 2 * (xcoordinates.get(k + 1) - graphicsData[i][0]));
-                    path.closePath();
-                    System.out.println("The line was closed , x = " + point.getX() + " on the itaration i = " + i);
-                    canvas.fill(path);
-                    canvas.draw(path);
-                    if (maxy == 0.0)
-                        averagey[k / 2] = miny;
-                    else
-                        averagey[k / 2] = maxy;
-                    if (k >= xcoordinates.size() - 2) break;
-                    k += 2;
-                    maxy = 0.0;
-                    miny = 0.0;
-                }
-                if(!(graphicsData[i + 1][0] >= xcoordinates.get(k + 1))&&!(graphicsData[i - 1][0] <= xcoordinates.get(k))) {
-                    integral[k / 2] += Math.abs((graphicsData[i][0] - graphicsData[i - 1][0]) * (graphicsData[i][1] + graphicsData[i - 1][1]) / 2);
-                    Point2D.Double point = xyToPoint(graphicsData[i][0], graphicsData[i][1]);
-                    path.lineTo(point.getX(), point.getY());
-                }
-
-            }
-        }
-        System.out.println("Integral" + (int) (k / 2) + " = " + integral[k / 2]);
-
-        canvas.setFont(smallfont);
-        FontRenderContext context = canvas.getFontRenderContext();
-        for (
-                int i = 0; i < xcoordinates.size() / 2; i++) {
-            canvas.setColor(Color.black);
-            Rectangle2D bounds = smallfont.getStringBounds(String.format("%.3f", integral[i]), context);
-            System.out.println(bounds.getX());
-            canvas.drawString(String.format("%.3f", integral[i]), (float) (xyToPoint(xcoordinates.get(2 * i) + (xcoordinates.get(2 * i + 1) - xcoordinates.get(2 * i)) / 2 - bounds.getX(), averagey[i] / 2).getX()), (float) xyToPoint(xcoordinates.get(2 * i) + (xcoordinates.get(2 * i + 1) - xcoordinates.get(2 * i)) / 2, averagey[i] / 2).getY());
-        }
-    }
-
-    protected void rotatePanel(Graphics2D canvas){
-        canvas.translate(0, getHeight());
-        canvas.rotate(-Math.PI/2);
-    }
-    protected void paintMarkers(Graphics2D canvas) {
+   /* protected void paintMarkers(Graphics2D canvas) {
 // Шаг 1 - Установить специальное перо для черчения контуров маркеров
         canvas.setStroke(markerStroke);
 // Выбрать красный цвета для контуров маркеров
@@ -353,14 +261,14 @@ minY
         for (Double[] point : graphicsData) {
 // Инициализировать эллипс как объект для представления маркера
             int size = 5;
-
-            Ellipse2D.Double marker = new Ellipse2D.Double();
+            GeneralPath marker = new GeneralPath();
+            //Ellipse2D.Double marker = new Ellipse2D.Double();
             Point2D.Double center = xyToPoint(point[0], point[1]);
             //line.setLine();
 // Угол прямоугольника - отстоит на расстоянии (3,3)
-            Point2D.Double corner = shiftPoint(center, size, size);
+           // Point2D.Double corner = shiftPoint(center, size, size);
 // Задать эллипс по центру и диагонали
-            marker.setFrameFromCenter(center, corner);
+            //marker.setFrameFromCenter(center, corner);
 
 
             Line2D.Double line = new Line2D.Double(shiftPoint(center, -size, 0), shiftPoint(center, size, 0));
@@ -389,13 +297,111 @@ minY
             canvas.draw(line);
             canvas.draw(marker); // Начертить контур маркера
             canvas.setColor(Color.BLUE);
-/* Эллипс будет задаваться посредством указания координат
-его центра
-и угла прямоугольника, в который он вписан */
-// Центр - в точке (x,y)
+
 
         }
     }
+    */
+   protected void paintMarkers(Graphics2D canvas) {
+       canvas.setStroke(this.markerStroke);
+       canvas.setColor(Color.RED);
+       canvas.setPaint(Color.RED);
+       GeneralPath lastMarker = null;
+       int i = -1;
+       for (Double[] point : graphicsData) {
+           i++;
+               canvas.setColor(Color.RED);
+
+           // Маркеры
+           GeneralPath star = new GeneralPath();
+           Point2D.Double center = xyToPoint(point[0], point[1]);
+           star.moveTo(center.getX() -6, center.getY());
+           star.lineTo(star.getCurrentPoint().getX()+4, star.getCurrentPoint().getY() + 3);
+           star.lineTo(star.getCurrentPoint().getX()+2, star.getCurrentPoint().getY()+3);
+           star.lineTo(star.getCurrentPoint().getX()+2, star.getCurrentPoint().getY()-3);
+           star.lineTo(star.getCurrentPoint().getX()+4, star.getCurrentPoint().getY()-3);
+           star.lineTo(star.getCurrentPoint().getX()-4, star.getCurrentPoint().getY()-3);
+           star.lineTo(star.getCurrentPoint().getX()-2, star.getCurrentPoint().getY()-3);
+           star.lineTo(star.getCurrentPoint().getX()-2, star.getCurrentPoint().getY()+3);
+          // star.lineTo(star.getCurrentPoint().getX()-4, star.getCurrentPoint().getY()+3);
+            star.closePath();
+            Boolean art = false;
+           if(Math.abs(point[0] + point[1]) < 10){
+               art = true;
+           }
+
+
+           if (i == this.selectedMarker)
+           {
+               lastMarker = star;
+           }
+           else if (art){
+               canvas.setColor(Color.CYAN);
+               canvas.draw(star);
+               canvas.setColor(Color.RED);
+
+           }
+           else {
+               canvas.draw(star);
+               // canvas.fill(star);
+           }
+       }
+
+       if (lastMarker != null) {
+           canvas.setColor(Color.BLUE);
+           canvas.setPaint(Color.BLUE);
+           canvas.draw(lastMarker);
+           canvas.fill(lastMarker);
+       }
+   }
+    protected void paintIntMarkers(Graphics2D canvas) {
+        canvas.setStroke(this.markerStroke);
+        canvas.setColor(Color.RED);
+        canvas.setPaint(Color.RED);
+        GeneralPath lastMarker = null;
+        int i = -1;
+        for (Double[] point : graphicsData) {
+            i++;
+            canvas.setColor(Color.blue);
+
+            // Маркеры
+            GeneralPath star = new GeneralPath();
+            Point2D.Double center = xyToPointInt(point[0].intValue(), point[1].intValue());
+            star.moveTo(center.getX() -6, center.getY());
+            star.lineTo(star.getCurrentPoint().getX()+4, star.getCurrentPoint().getY() + 3);
+            star.lineTo(star.getCurrentPoint().getX()+2, star.getCurrentPoint().getY()+3);
+            star.lineTo(star.getCurrentPoint().getX()+2, star.getCurrentPoint().getY()-3);
+            star.lineTo(star.getCurrentPoint().getX()+4, star.getCurrentPoint().getY()-3);
+            star.lineTo(star.getCurrentPoint().getX()-4, star.getCurrentPoint().getY()-3);
+            star.lineTo(star.getCurrentPoint().getX()-2, star.getCurrentPoint().getY()-3);
+            star.lineTo(star.getCurrentPoint().getX()-2, star.getCurrentPoint().getY()+3);
+            // star.lineTo(star.getCurrentPoint().getX()-4, star.getCurrentPoint().getY()+3);
+            star.closePath();
+            Boolean art = false;
+
+
+
+            if (i == this.selectedMarker)
+            {
+                lastMarker = star;
+            }
+
+
+
+            else {
+                canvas.draw(star);
+                // canvas.fill(star);
+            }
+        }
+
+        if (lastMarker != null) {
+            canvas.setColor(Color.BLUE);
+            canvas.setPaint(Color.BLUE);
+            canvas.draw(lastMarker);
+            canvas.fill(lastMarker);
+        }
+    }
+
 
 
 
@@ -506,12 +512,29 @@ minY
         double deltaY = maxY - y;
         return new Point2D.Double(deltaX*scale, deltaY*scale);
     }
+    protected Point2D.Double xyToPointInt(int x, int y) {
+// Вычисляем смещение X от самой левой точки (minX)
+        int deltaX = (int)x - (int)minX;
+// Вычисляем смещение Y от точки верхней точки (maxY)
+        int deltaY = (int)maxY - (int)y;
+        return new Point2D.Double(deltaX*scale, deltaY*scale);
+    }
     /* Метод-помощник, возвращающий экземпляр класса Point2D.Double
      * смещѐнный по отношению к исходному на deltaX, deltaY
      * К сожалению, стандартного метода, выполняющего такую задачу, нет.
      */
     protected Point2D.Double shiftPoint(Point2D.Double src, double deltaX,
                                         double deltaY) {
+
+// Инициализировать новый экземпляр точки
+        Point2D.Double dest = new Point2D.Double();
+// Задать еѐ координаты как координаты существующей точки + заданные смещения
+
+        dest.setLocation(src.getX() + deltaX, src.getY() + deltaY);
+        return dest;
+    }
+    protected Point2D.Double shiftPointInt(Point2D.Double src, int deltaX,
+                                        int deltaY) {
 
 // Инициализировать новый экземпляр точки
         Point2D.Double dest = new Point2D.Double();

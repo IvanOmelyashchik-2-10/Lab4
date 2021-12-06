@@ -26,6 +26,7 @@ public class MainFrame extends JFrame {
     private JFileChooser fileChooser = null;
     private JCheckBoxMenuItem showAxisMenuItem;
     private JCheckBoxMenuItem showMarkersMenuItem;
+    private JCheckBoxMenuItem showIntGraficalItem;
     private JCheckBoxMenuItem rotatePanelMenuItem;
     private GraphicsDisplay display = new GraphicsDisplay();
     private boolean fileLoaded = false;
@@ -56,22 +57,10 @@ public class MainFrame extends JFrame {
             }
 
         };
-        Action openGraphicsAction1 = new AbstractAction("Открыть второй график") {
-            public void actionPerformed(ActionEvent event) {
-                if (fileChooser == null) {
-                    fileChooser = new JFileChooser();
-                    fileChooser.setCurrentDirectory(new File("."));
-                }
-                if (fileChooser.showOpenDialog(MainFrame.this) == JFileChooser.APPROVE_OPTION)
-                    openGraphics(fileChooser.getSelectedFile());
-            }
 
-
-        };
 
 
         fileMenu.add(openGraphicsAction);
-        fileMenu.add(openGraphicsAction1);
 
         JMenu graphicsMenu = new JMenu("График");
         menuBar.add(graphicsMenu);
@@ -92,17 +81,15 @@ public class MainFrame extends JFrame {
                 display.setShowMarkers(showMarkersMenuItem.isSelected());
             }
         };
-
-        Action turnGrid = new AbstractAction("Поменять оси") {
-            public void actionPerformed(ActionEvent event) {
-// свойство showAxis класса GraphicsDisplay истина,если элемент меню
-// showAxisMenuItem отмечен флажком, и ложь - в противном случае
-                display.setTurnGrid(rotatePanelMenuItem.isSelected());
+        Action showIntGraficalAction  = new AbstractAction("Целочисленный график") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                display.setShowIntgraphical(showIntGraficalItem.isSelected());
             }
         };
-        rotatePanelMenuItem = new JCheckBoxMenuItem(turnGrid);
-        graphicsMenu.add(rotatePanelMenuItem);
-        rotatePanelMenuItem.setSelected(false);
+        showIntGraficalItem = new JCheckBoxMenuItem(showIntGraficalAction);
+        graphicsMenu.add(showIntGraficalItem);
+        showIntGraficalItem.setSelected(true);
 
         showMarkersMenuItem = new JCheckBoxMenuItem(showMarkersAction);
         graphicsMenu.add(showMarkersMenuItem);
